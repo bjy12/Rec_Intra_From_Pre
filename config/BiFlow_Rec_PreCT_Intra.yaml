@@ -1,0 +1,53 @@
+model:
+  data_path: D:/data_space/Zhongrifriendly/paired_process_128_tigre/
+  train_files_names_path: ./files_names/train_files_pre_only.txt
+  val_files_names_path: ./files_names/val_files_pre_only.txt
+  geo_config_path: ./geo_config/config_128_1_25_ls.yaml
+  results_dir: ./results/rec_run
+  loss_type: l1
+  volume_channels: 8
+  timesteps: 1000
+  model_dim: 72
+  dim_mults: [1, 1, 2, 4, 8]
+  use_attn: [0, 0, 0, 1, 1]
+  patch_size: 1
+  num_dit: 1
+  enable_amp: true
+  model: BiFlowNet
+  AE_ckpt: D:/code_space_bone/3D-MedDiffusion-main/ver_128_full_VQAE/results/my_model/version_0/checkpoints/latest_checkpoint-v2.ckpt
+  epochs: 1000
+  global_seed: 23
+  num_workers: 1
+  batch_size: 2
+  resolution: [32, 32, 32]
+  log_every: 50
+  ckpt_every: 500
+  ckpt: null 
+  vq_size: 64
+  condition_channels: 128
+  val_every_steps: 500
+
+cfg_xray_encoder:
+  encoder_type: resnet
+  num_layers: 3
+  use_first_pool: false
+  dim_in: 1
+  inplanes: 16
+  feat_num_list: [16, 32, 64, 128]
+  latent_size: 128
+  input_size: [256, 256]
+  layer_num_list: [3, 4, 6, 3]
+  activation: GELU
+  block: BasicBlock
+  normalization: Batch
+  fusion_type: ada
+  latent_volume_size: 32
+  out_channels: 128
+  aggregator_conf:
+    latent_size: 128
+    activation: GELU
+cfg_ct_encoder:
+  in_channels: 8
+  out_channels: 128
+  activation: GELU
+  norm_type: Batch
