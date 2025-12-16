@@ -99,7 +99,7 @@ class Pre_Intra_Dataset_Ver_128(Dataset):
         intra_file_name = f"{name}_intra_processed_volume.nii.gz"
         pre_ct_path = os.path.join(self.root_dir,'images', f"{file_name}.nii.gz")
         intra_ct_path = os.path.join(self.root_dir,'images', f"{file_name}.nii.gz")
-
+        #* ct scaled to [0,1] before loaded 
         pre_ct = tio.ScalarImage(pre_ct_path)
         intra_ct = tio.ScalarImage(intra_ct_path)
         pre_ct = pre_ct.data.to(torch.float32)
@@ -108,6 +108,7 @@ class Pre_Intra_Dataset_Ver_128(Dataset):
         pre_ct = pre_ct * 2 - 1
         intra_ct = intra_ct * 2 - 1 
         # 
+        #* latent already normalized to [-1,1] before loaded 
         pre_latent_path = os.path.join(self.root_dir, 'latent_ds', f"latent_{name}_pre_processed_volume.nii.gz")
         intra_latent_path = os.path.join(self.root_dir, 'latent_ds', f"latent_{name}_intra_processed_volume.nii.gz")
         pre_latent = tio.ScalarImage(pre_latent_path)

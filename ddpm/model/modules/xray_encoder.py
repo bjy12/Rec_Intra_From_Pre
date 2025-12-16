@@ -366,7 +366,7 @@ class XRayFeatureExtractor(nn.Module):
 
     def __init__(self , xray_encoder_cfg):
         super().__init__()
-        #pdb.set_trace()
+        pdb.set_trace()
         self.xray_encoder_cfg = xray_encoder_cfg
         self.encoder_type = xray_encoder_cfg.encoder_type
         if self.encoder_type == 'resnet':
