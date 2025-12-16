@@ -26,6 +26,7 @@ OUT_ROOT = r"D:\data_space\Zhongrifriendly\paired_data_cropped_176_1\cropped_by_
 LEVELS = ("L1", "L2", "L3", "L4", "L5")
 INTRA_NAME = "intra_crop_fullsize.nii.gz"
 MASK_NAME = "mask_crop_fullsize.nii.gz"
+MASKED_INTRA_NAME = "intra_crop_masked_by_dilated.nii.gz"
 BLACKLIST_PATH = os.path.join(os.path.dirname(__file__), "black_case.txt")
 
 LABEL_COLORS: Dict[int, Tuple[float, float, float]] = {
@@ -52,6 +53,26 @@ def load_nifti(path: str) -> np.ndarray:
 def mid_slice(arr: np.ndarray) -> np.ndarray:
     z = arr.shape[0] // 2
     return arr[:,:,z]
+
+
+def mid_slices_three_axes(arr: np.ndarray):
+    """返回轴向/冠状/矢状三个方向的中间切片。"""
+    z_mid = arr.shape[0] // 2
+    y_mid = arr.shape[1] // 2
+    x_mid = arr.shape[2] // 2
+    return {
+        "axial_z": arr[z_mid, :, :],
+        "coronal_y": arr[:, y_mid, :],
+        "sagittal_x": arr[:, :, x_mid],
+    }
+
+
+def normalize01(img: np.ndarray) -> np.ndarray:
+    img = img.astype(np.float32)
+    vmin, vmax = img.min(), img.max()
+    if vmax > vmin:
+        return (img - vmin) / (vmax - vmin)
+    return np.zeros_like(img, dtype=np.float32)
 
 
 def colorize_mask(mask2d: np.ndarray) -> np.ndarray:
@@ -111,6 +132,13 @@ def process_one(case: str, blacklist):
         save_png(os.path.join(out_level_dir, "ct_slice.png"), ct_slice, cmap="gray")
         save_png(os.path.join(out_level_dir, "mask_slice.png"), mask_rgb)
         save_png(os.path.join(out_level_dir, "overlay_slice.png"), overlay)
+
+        # 可视化膨胀后 mask 作用下的 intra 体素块（三个方向中间切片）
+        masked_path = os.path.join(level_dir, MASKED_INTRA_NAME)
+        if os.path.isfile(masked_path):
+            masked_arr = load_nifti(masked_path)
+            for name, sl in mid_slices_three_axes(masked_arr).items():
+                save_png(os.path.join(out_level_dir, f"masked_{name}.png"), normalize01(sl), cmap="gray")
 
 
 def main():

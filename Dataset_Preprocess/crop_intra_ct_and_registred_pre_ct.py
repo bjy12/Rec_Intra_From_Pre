@@ -23,6 +23,7 @@ import json
 import csv
 import numpy as np
 import SimpleITK as sitk
+import matplotlib.pyplot as plt
 from typing import Tuple
 
 # ========== 配置区域：按需修改 ==========
@@ -34,6 +35,8 @@ INTRA_FILENAME = "intra_processed_volume.nii.gz"
 MASK_FILENAME = "moving_in_fixed.nii.gz"
 # 裁剪时在各方向的 margin（voxel），可根据需要调整
 MARGIN_VOX = (4, 4, 4)
+# mask 膨胀半径（voxel），用于计算膨胀后的体积与提取重叠体素块
+DILATE_RADIUS_VOX = (2, 2, 2)
 # 统计文件输出路径
 STATS_CSV = os.path.join(OUT_ROOT, "bbox_stats.csv")
 # 黑名单（出现在此列表的 case 将被跳过），默认读取同目录 black_case.txt
@@ -68,8 +71,13 @@ def expand_bbox(xyz_min, xyz_max, margin, size):
     return xyz_min.astype(int), xyz_max.astype(int)
 
 
-def crop_with_mask(intra_img: sitk.Image, mask_img: sitk.Image, margin=MARGIN_VOX):
-    xyz_min, xyz_max = mask_bbox(mask_img)
+def crop_with_mask(intra_img: sitk.Image, mask_img: sitk.Image, margin=MARGIN_VOX, dilation_radius=None):
+    """可选先对 mask 膨胀，再按 bbox+margin 裁剪，并返回重叠体素块。"""
+    radius = _normalize_radius(dilation_radius) if dilation_radius is not None else (0, 0, 0)
+    use_dilate = any(r > 0 for r in radius)
+    mask_for_bbox = sitk.BinaryDilate(mask_img > 0, radius) if use_dilate else mask_img
+
+    xyz_min, xyz_max = mask_bbox(mask_for_bbox)
     size = np.array(intra_img.GetSize())  # x,y,z
     xyz_min, xyz_max = expand_bbox(xyz_min, xyz_max, margin, size)
 
@@ -80,6 +88,7 @@ def crop_with_mask(intra_img: sitk.Image, mask_img: sitk.Image, margin=MARGIN_VO
 
     intra_crop = extractor.Execute(intra_img)
     mask_crop = extractor.Execute(mask_img)
+    mask_crop_dilated = extractor.Execute(mask_for_bbox) if use_dilate else mask_crop
 
     # 生成与原始尺寸一致的全尺寸裁剪图，保持空间信息不变（位置不变）
     intra_full = sitk.Image(intra_img.GetSize(), intra_img.GetPixelID())
@@ -103,7 +112,81 @@ def crop_with_mask(intra_img: sitk.Image, mask_img: sitk.Image, margin=MARGIN_VO
         "direction": direction,
         "size": region_size,
     }
-    return intra_crop, mask_crop, intra_full, mask_full, bbox_info
+    # 基于膨胀后 mask 获取与 intra 重叠的体素块
+    intra_masked_crop = sitk.Mask(intra_crop, mask_crop_dilated > 0 , outsideValue=-500)
+
+    return intra_crop, mask_crop, intra_full, mask_full, bbox_info, mask_crop_dilated, intra_masked_crop
+
+
+def _normalize_radius(radius):
+    """将膨胀半径标准化为 (x, y, z) 元组。"""
+    if radius is None:
+        return (0, 0, 0)
+    if isinstance(radius, int):
+        return (radius, radius, radius)
+    radius = tuple(int(r) for r in radius)
+    if len(radius) == 1:
+        return (radius[0],) * 3
+    if len(radius) != 3:
+        raise ValueError("dilation radius 必须为 int、长度为1或长度为3的序列")
+    return radius
+
+
+def mask_volume_stats(mask_img: sitk.Image, dilation_radius=DILATE_RADIUS_VOX):
+    """
+    计算 mask 的体素数量与体积，并可选对 mask 进行膨胀后再计算。
+    返回 dict，包含原始与膨胀后的体素数与体积（mm^3）。
+    """
+    radius = _normalize_radius(dilation_radius)
+    mask_bin = mask_img > 0
+    spacing = np.array(mask_img.GetSpacing())
+    voxel_volume_mm3 = float(np.prod(spacing))
+
+    voxels = int(sitk.GetArrayViewFromImage(mask_bin).sum())
+    volume_mm3 = voxels * voxel_volume_mm3
+
+    if any(r > 0 for r in radius):
+        mask_dilated = sitk.BinaryDilate(mask_bin, radius)
+        voxels_dilated = int(sitk.GetArrayViewFromImage(mask_dilated).sum())
+        volume_dilated_mm3 = voxels_dilated * voxel_volume_mm3
+    else:
+        voxels_dilated = voxels
+        volume_dilated_mm3 = volume_mm3
+
+    return {
+        "voxels": voxels,
+        "volume_mm3": volume_mm3,
+        "voxels_dilated": voxels_dilated,
+        "volume_dilated_mm3": volume_dilated_mm3,
+        "dilation_radius_vox": radius,
+    }
+
+
+def normalize01(arr: np.ndarray) -> np.ndarray:
+    arr = arr.astype(np.float32)
+    vmin, vmax = arr.min(), arr.max()
+    if vmax > vmin:
+        return (arr - vmin) / (vmax - vmin)
+    return np.zeros_like(arr, dtype=np.float32)
+
+
+def save_middle_slices(masked_img: sitk.Image, out_dir: str, prefix="intra_masked"):
+    """
+    保存膨胀后 mask 作用下 intra 的三个方向中间切片可视化。
+    输出：{prefix}_axial_z.png / _coronal_y.png / _sagittal_x.png
+    """
+    arr = sitk.GetArrayFromImage(masked_img)  # z,y,x
+    z_mid = arr.shape[0] // 2
+    y_mid = arr.shape[1] // 2
+    x_mid = arr.shape[2] // 2
+    slices = {
+        "axial_z": arr[z_mid, :, :],
+        "coronal_y": arr[:, y_mid, :],
+        "sagittal_x": arr[:, :, x_mid],
+    }
+    os.makedirs(out_dir, exist_ok=True)
+    for name, sl in slices.items():
+        plt.imsave(os.path.join(out_dir, f"{prefix}_{name}.png"), normalize01(sl), cmap="gray")
 
 
 def main():
@@ -138,15 +221,30 @@ def main():
 
             mask_img = load_nifti(mask_path)
             try:
-                intra_crop, mask_crop, intra_full, mask_full, bbox_info = crop_with_mask(intra_img, mask_img, margin=MARGIN_VOX)
+                intra_crop, mask_crop, intra_full, mask_full, bbox_info, mask_crop_dilated, intra_masked_crop = crop_with_mask(
+                    intra_img, mask_img, margin=MARGIN_VOX, dilation_radius=DILATE_RADIUS_VOX
+                )
             except ValueError as e:
                 print(f"[跳过] case={case} level={level}: {e}")
                 continue
+
+            volume_info = mask_volume_stats(mask_img, dilation_radius=DILATE_RADIUS_VOX)
+            bbox_info.update({
+                "mask_voxels": volume_info["voxels"],
+                "mask_volume_mm3": volume_info["volume_mm3"],
+                "mask_dilated_voxels": volume_info["voxels_dilated"],
+                "mask_dilated_volume_mm3": volume_info["volume_dilated_mm3"],
+                "mask_dilation_radius_vox": volume_info["dilation_radius_vox"],
+            })
 
             out_dir = os.path.join(OUT_ROOT, case, level)
             os.makedirs(out_dir, exist_ok=True)
             sitk.WriteImage(intra_crop, os.path.join(out_dir, "intra_crop.nii.gz"))
             sitk.WriteImage(mask_crop, os.path.join(out_dir, "mask_crop.nii.gz"))
+            sitk.WriteImage(mask_crop_dilated, os.path.join(out_dir, "mask_crop_dilated.nii.gz"))
+            sitk.WriteImage(intra_masked_crop, os.path.join(out_dir, "intra_crop_masked_by_dilated.nii.gz"))
+            # 在写全尺寸文件前，保存 intra_masked_crop 的三个方向中间切片可视化
+            save_middle_slices(intra_masked_crop, out_dir, prefix="intra_masked")
             # 全尺寸版本（与原始 intra 尺寸/坐标一致，未移动）
             sitk.WriteImage(intra_full, os.path.join(out_dir, "intra_crop_fullsize.nii.gz"))
             sitk.WriteImage(mask_full, os.path.join(out_dir, "mask_crop_fullsize.nii.gz"))
@@ -166,6 +264,10 @@ def main():
                 "size_y_mm": float(size_mm[1]),
                 "size_z_mm": float(size_mm[2]),
                 "voxel_volume": int(np.prod(size_vox)),
+                "mask_voxels": int(volume_info["voxels"]),
+                "mask_volume_mm3": float(volume_info["volume_mm3"]),
+                "mask_dilated_voxels": int(volume_info["voxels_dilated"]),
+                "mask_dilated_volume_mm3": float(volume_info["volume_dilated_mm3"]),
             })
 
             print(f"[保存] case={case} level={level} -> {out_dir}")

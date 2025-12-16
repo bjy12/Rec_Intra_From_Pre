@@ -10,12 +10,12 @@ DATA_ROOT = r"D:\data_space\Zhongrifriendly\paired_data_cropped_176_1\final_mask
 # elastix 生成的 TransformParameters.0.txt 根目录（对应 run_elastix_batch 的 OUTPUT_ROOT）
 TRANSFORM_ROOT = r"D:\Elastic\elastix-5.0.1-win64_exe\elastix-5.0.1-win64\demo_results_batch"
 # 重采样结果输出根目录
-OUTPUT_ROOT = r"D:\Elastic\elastix-5.0.1-win64_exe\elastix-5.0.1-win64\resampled_results"
+OUTPUT_ROOT = r"D:\Elastic\elastix-5.0.1-win64_exe\elastix-5.0.1-win64\resampled_results_pre_to_intra"
 
 # 文件命名模式（与 run_elastix_batch 保持一致）
 VERTEBRAE = ("L1", "L2", "L3", "L4", "L5")
 FIXED_SUFFIX = "_intra_ct_masked.nii.gz"  # fixed
-MOVING_SUFFIX = "_pre_mask.nii.gz"   # moving
+MOVING_SUFFIX = "_pre_ct_masked.nii.gz"   # moving
 # ====================================
 
 
@@ -110,7 +110,7 @@ def resample_one(fixed_path: str, moving_path: str, transform_path: str, out_dir
     resampler.SetReferenceImage(fixed)
     resampler.SetTransform(euler_transform)
     resampler.SetInterpolator(sitk.sitkLinear)
-    resampler.SetDefaultPixelValue(0)
+    resampler.SetDefaultPixelValue(-1000)
 
     moving_in_fixed = resampler.Execute(moving)
 
@@ -126,7 +126,7 @@ def resample_one(fixed_path: str, moving_path: str, transform_path: str, out_dir
         resampler2.SetReferenceImage(moving)
         resampler2.SetTransform(inverse_transform)
         resampler2.SetInterpolator(sitk.sitkLinear)
-        resampler2.SetDefaultPixelValue(0)
+        resampler2.SetDefaultPixelValue(-1000)
         fixed_in_moving = resampler2.Execute(fixed)
         out_fixed = os.path.join(out_dir, "fixed_in_moving.nii.gz")
         sitk.WriteImage(fixed_in_moving, out_fixed)
