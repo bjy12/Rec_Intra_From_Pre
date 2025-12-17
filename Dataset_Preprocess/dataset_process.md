@@ -20,3 +20,9 @@
 
 7) `crop_intra_ct_and_registred_pre_ct.py`  
    使用已对齐的 mask 在术中 CT 上批量裁剪各椎体 ROI，输出裁剪体、全尺寸对齐版本和 bbox 统计；同样跳过 `black_case.txt` 中的病例。
+8) `get_vertebral_intra_pre_aligned.py`
+   获取对齐到术中的术前的ct以及术中的vertebral intra level ct 
+9) 使用tigre 构建 术中ct 和 drr 成对的图像,在Image process 项目中处理
+10)`project_roi_crop_drr.py`
+    批量读取各 case 的 CT、椎体 mask 与对应 DRR（0°/90°等角度），将每个椎体的投影生成加权质心与 bbox，裁剪 DRR ROI，并输出裁剪图、叠加图和元信息；同时为每个 Level 生成包含 level/angles/roi 的 pickle，便于后续快速加载。
+
