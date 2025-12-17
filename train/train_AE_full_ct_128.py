@@ -11,7 +11,8 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from torch.utils.data import DataLoader
 from AutoEncoder.model.PatchVolume import patchvolumeAE
 from train.callbacks import VolumeLogger
-from dataset.vqgan_128 import VQGANDataset_128_full_CT
+#from dataset.vqgan_128 import VQGANDataset_128_full_CT
+from dataset.vqgan_vertebral_level import VQGAN_Vertebral_Dataset
 
 import argparse
 from omegaconf import OmegaConf
@@ -31,9 +32,9 @@ def main(cfg_path: str):
         print("WARNING: CUDA is not available! Training will use CPU (very slow).")
         print("Please install PyTorch with CUDA support if you have a GPU.")
     
-    train_dataset = VQGANDataset_128_full_CT(
+    train_dataset = VQGAN_Vertebral_Dataset(
         root_dir=cfg.dataset.root_dir,augmentation=True,split='train' , files_names_path = cfg.dataset.train_files_name)
-    val_dataset = VQGANDataset_128_full_CT(
+    val_dataset = VQGAN_Vertebral_Dataset(
         root_dir=cfg.dataset.root_dir,augmentation=False,split='val', files_names_path = cfg.dataset.val_files_name)
 
     train_dataloader = DataLoader(dataset=train_dataset, batch_size=cfg.model.batch_size,shuffle=True,
@@ -84,7 +85,7 @@ def main(cfg_path: str):
         max_steps=cfg.model.max_steps,
         max_epochs=cfg.model.max_epochs,
         precision=precision,
-        check_val_every_n_epoch=2,
+        check_val_every_n_epoch=1,
         num_sanity_val_steps = 2,
         logger=logger
     )
