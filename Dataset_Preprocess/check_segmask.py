@@ -24,8 +24,8 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from matplotlib import cm
 # ========== 配置区域：按需修改 ==========
-ROOT_DIR = r"D:\data_space\Zhongrifriendly\paired_data_cropped_176_1\separate_masks_cleaned"
-OUT_DIR = r"D:\data_space\Zhongrifriendly\paired_data_cropped_176_1\separate_masks_cleaned_vis"
+ROOT_DIR = "D:/data_space/Zhongrifriendly/csh/paired_data/CT_mask"
+OUT_DIR = "D:/data_space/Zhongrifriendly/csh/paired_data/CT_mask_vis"
 LEVELS = ("L1", "L2", "L3", "L4", "L5")
 INTRA_SUFFIX = "_intra_mask_cleaned.nii.gz"
 PRE_SUFFIX = "_pre_mask_cleaned.nii.gz"

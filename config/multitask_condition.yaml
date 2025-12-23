@@ -1,0 +1,45 @@
+# Multi-Task Condition Branch Training Configuration (V2)
+# Stage 1: Pre-train condition branch with registration + generation tasks
+# 适配新的 dataset 格式 (无 proj_points)
+
+# Paths
+data_path: "D:/data_space/Zhongrifriendly/paired_data_cropped_176_1/final_dataset"
+train_files_path: "./files_names/train_cases_vertebral_ds.txt"
+val_files_path: null  # "./files_names/test_cases_vertebral_ds.txt"
+geo_config_path: "./Dataset_Preprocess/config_pre/config_172_1_600.yaml"
+results_dir: "./results/multitask_condition"
+
+# Data augmentation and normalization
+max_rotation_deg: 20.0
+max_translation_voxels: 10.0
+volume_size: [176, 176, 176]
+window_min: -250
+window_max: 2000
+
+# Model - DRR encoder
+drr_base_channels: 32
+drr_out_channels: 64
+
+# Model - CT encoder
+ct_out_channels: 64
+
+# Model - Fusion and heads
+fusion_channels: 128
+gen_base_channels: 64
+
+# Training
+epochs: 100
+batch_size: 2
+lr: 0.0001
+weight_decay: 0.01
+lambda_reg: 1.0
+lambda_gen: 1.0
+enable_amp: true
+num_workers: 4
+seed: 42
+
+# Logging
+log_every: 50
+ckpt_every: 500
+max_ckpts: 5
+val_every_epochs: 5

@@ -1,0 +1,45 @@
+case,phase,dir,file,spacing_x,spacing_y,spacing_z,size_x,size_y,size_z,min_spacing,status
+baierying,pre,D:\data_space\ZhongriSecond\wjy 1-11\baierying\pre\CT\bone,1.25mm Bone.nii,0.42773398756980896,0.42773398756980896,1.25,512,512,189,0.42773398756980896,ok
+baierying,pre,D:\data_space\ZhongriSecond\wjy 1-11\baierying\pre\CT\std,1.25mm stnd.nii,0.42773398756980896,0.42773398756980896,1.25,512,512,189,0.42773398756980896,ok
+baierying,intra,D:\data_space\ZhongriSecond\wjy 1-11\baierying\intra\CT\bone,Bone 1.0.nii,0.3919999897480011,0.3919999897480011,0.800000011920929,512,512,376,0.3919999897480011,ok
+baierying,intra,D:\data_space\ZhongriSecond\wjy 1-11\baierying\intra\CT\std,Spine 1.0.nii,0.3919999897480011,0.3919999897480011,0.800000011920929,512,512,376,0.3919999897480011,ok
+fanjun,pre,D:\data_space\ZhongriSecond\wjy 1-11\fanjun\pre\CT\bone,1.25mm Bone.nii,0.42382800579071045,0.42382800579071045,1.25,512,512,233,0.42382800579071045,ok
+fanjun,pre,D:\data_space\ZhongriSecond\wjy 1-11\fanjun\pre\CT\std,1.25mm stnd.nii,0.42382800579071045,0.42382800579071045,1.25,512,512,233,0.42382800579071045,ok
+fanjun,intra,D:\data_space\ZhongriSecond\wjy 1-11\fanjun\intra\CT\bone,1.25mm Bone.nii,0.39648398756980896,0.39648398756980896,1.25,512,512,281,0.39648398756980896,ok
+fanjun,intra,D:\data_space\ZhongriSecond\wjy 1-11\fanjun\intra\CT\std,1.25mm stnd.nii,0.39648398756980896,0.39648398756980896,1.25,512,512,281,0.39648398756980896,ok
+lanxiuqin,pre,D:\data_space\ZhongriSecond\wjy 1-11\lanxiuqin\pre\CT\bone,1.25mm Bone.nii,0.4179689884185791,0.4179689884185791,1.25,512,512,197,0.4179689884185791,ok
+lanxiuqin,pre,D:\data_space\ZhongriSecond\wjy 1-11\lanxiuqin\pre\CT\std,1.25mm stnd.nii,0.4179689884185791,0.4179689884185791,1.25,512,512,197,0.4179689884185791,ok
+lanxiuqin,intra,D:\data_space\ZhongriSecond\wjy 1-11\lanxiuqin\intra\CT\bone,Bone 1.0.nii,0.2639999985694885,0.2639999985694885,0.800000011920929,512,512,269,0.2639999985694885,ok
+lanxiuqin,intra,D:\data_space\ZhongriSecond\wjy 1-11\lanxiuqin\intra\CT\std,Spine 1.0.nii,0.2639999985694885,0.2639999985694885,0.800000011920929,512,512,269,0.2639999985694885,ok
+libaogui,pre,D:\data_space\ZhongriSecond\wjy 1-11\libaogui\pre\CT\bone,1.25mm Bone.nii,0.41992199420928955,0.41992199420928955,1.25,512,512,209,0.41992199420928955,ok
+libaogui,pre,D:\data_space\ZhongriSecond\wjy 1-11\libaogui\pre\CT\std,1.25mm stnd.nii,0.41992199420928955,0.41992199420928955,1.25,512,512,209,0.41992199420928955,ok
+libaogui,intra,D:\data_space\ZhongriSecond\wjy 1-11\libaogui\intra\CT\bone,Bone 1.0.nii,0.421999990940094,0.421999990940094,0.800000011920929,512,512,388,0.421999990940094,ok
+libaogui,intra,D:\data_space\ZhongriSecond\wjy 1-11\libaogui\intra\CT\std,Spine 1.0.nii,0.421999990940094,0.421999990940094,0.800000011920929,512,512,388,0.421999990940094,ok
+liuxiaoli,pre,D:\data_space\ZhongriSecond\wjy 1-11\liuxiaoli\pre\CT\bone,1.25mm Bone.nii,0.3515619933605194,0.3515619933605194,1.25,512,512,205,0.3515619933605194,ok
+liuxiaoli,pre,D:\data_space\ZhongriSecond\wjy 1-11\liuxiaoli\pre\CT\std,1.25mm stnd.nii,0.3515619933605194,0.3515619933605194,1.25,512,512,205,0.3515619933605194,ok
+liuxiaoli,intra,D:\data_space\ZhongriSecond\wjy 1-11\liuxiaoli\intra\CT\bone,Bone 1.0.nii,0.44600000977516174,0.44600000977516174,0.800000011920929,512,512,339,0.44600000977516174,ok
+liuxiaoli,intra,D:\data_space\ZhongriSecond\wjy 1-11\liuxiaoli\intra\CT\std,Spine 1.0.nii,0.44600000977516174,0.44600000977516174,0.800000011920929,512,512,339,0.44600000977516174,ok
+lixiuzhi,pre,D:\data_space\ZhongriSecond\wjy 1-11\lixiuzhi\pre\CT\bone,1.0 x 1.0_bone.nii,0.306640625,0.306640625,1.0,512,512,210,0.306640625,ok
+lixiuzhi,pre,D:\data_space\ZhongriSecond\wjy 1-11\lixiuzhi\pre\CT\std,1.0 x 1.0_spine.nii,0.306640625,0.306640625,1.0,512,512,210,0.306640625,ok
+lixiuzhi,intra,D:\data_space\ZhongriSecond\wjy 1-11\lixiuzhi\intra\CT\bone,Bone 1.0.nii,0.3630000054836273,0.3630000054836273,0.800000011920929,512,512,326,0.3630000054836273,ok
+lixiuzhi,intra,D:\data_space\ZhongriSecond\wjy 1-11\lixiuzhi\intra\CT\std,Spine 1.0.nii,0.3630000054836273,0.3630000054836273,0.800000011920929,512,512,326,0.3630000054836273,ok
+sunshujun,pre,D:\data_space\ZhongriSecond\wjy 1-11\sunshujun\pre\CT\bone,1.25mm Bone.nii,0.3789060115814209,0.3789060115814209,1.25,512,512,233,0.3789060115814209,ok
+sunshujun,pre,D:\data_space\ZhongriSecond\wjy 1-11\sunshujun\pre\CT\std,1.25mm stnd.nii,0.3789060115814209,0.3789060115814209,1.25,512,512,233,0.3789060115814209,ok
+sunshujun,intra,D:\data_space\ZhongriSecond\wjy 1-11\sunshujun\intra\CT\bone,1.25mm Bone.nii,0.33398398756980896,0.33398398756980896,1.25,512,512,261,0.33398398756980896,ok
+sunshujun,intra,D:\data_space\ZhongriSecond\wjy 1-11\sunshujun\intra\CT\std,1.25mm stnd.nii,0.33398398756980896,0.33398398756980896,1.25,512,512,261,0.33398398756980896,ok
+wangsubiao,pre,D:\data_space\ZhongriSecond\wjy 1-11\wangsubiao\pre\CT\bone,1.25mm Bone.nii,0.3476560115814209,0.3476560115814209,1.25,512,512,225,0.3476560115814209,ok
+wangsubiao,pre,D:\data_space\ZhongriSecond\wjy 1-11\wangsubiao\pre\CT\std,1.25mm stnd.nii,0.3476560115814209,0.3476560115814209,1.25,512,512,225,0.3476560115814209,ok
+wangsubiao,intra,D:\data_space\ZhongriSecond\wjy 1-11\wangsubiao\intra\CT\bone,1.25mm Bone.nii,0.359375,0.359375,1.25,512,512,237,0.359375,ok
+wangsubiao,intra,D:\data_space\ZhongriSecond\wjy 1-11\wangsubiao\intra\CT\std,1.25mm stnd.nii,0.359375,0.359375,1.25,512,512,237,0.359375,ok
+yanghuaiyin,pre,D:\data_space\ZhongriSecond\wjy 1-11\yanghuaiyin\pre\CT\bone,1.25mm Bone.nii,0.421875,0.421875,1.25,512,512,201,0.421875,ok
+yanghuaiyin,pre,D:\data_space\ZhongriSecond\wjy 1-11\yanghuaiyin\pre\CT\std,1.25mm stnd.nii,0.421875,0.421875,1.25,512,512,201,0.421875,ok
+yanghuaiyin,intra,D:\data_space\ZhongriSecond\wjy 1-11\yanghuaiyin\intra\CT\bone,1.25mm Bone.nii,0.421875,0.421875,20.0,512,512,17,0.421875,ok
+yanghuaiyin,intra,D:\data_space\ZhongriSecond\wjy 1-11\yanghuaiyin\intra\CT\std,1.25mm stnd.nii,0.421875,0.421875,1.25,512,512,265,0.421875,ok
+zhangwenqi,pre,D:\data_space\ZhongriSecond\wjy 1-11\zhangwenqi\pre\CT\bone,1.25mm Bone.nii,0.38085898756980896,0.38085898756980896,1.25,512,512,221,0.38085898756980896,ok
+zhangwenqi,pre,D:\data_space\ZhongriSecond\wjy 1-11\zhangwenqi\pre\CT\std,1.25mm stnd.nii,0.38085898756980896,0.38085898756980896,1.25,512,512,221,0.38085898756980896,ok
+zhangwenqi,intra,D:\data_space\ZhongriSecond\wjy 1-11\zhangwenqi\intra\CT\bone,1.25mm Bone.nii,0.3984380066394806,0.3984380066394806,1.25,512,512,233,0.3984380066394806,ok
+zhangwenqi,intra,D:\data_space\ZhongriSecond\wjy 1-11\zhangwenqi\intra\CT\std,1.25mm stnd.nii,0.3984380066394806,0.3984380066394806,1.25,512,512,233,0.3984380066394806,ok
+zhangye,pre,D:\data_space\ZhongriSecond\wjy 1-11\zhangye\pre\CT\bone,Bone 1.0.nii,0.4880000054836273,0.4880000054836273,0.800000011920929,512,512,382,0.4880000054836273,ok
+zhangye,pre,D:\data_space\ZhongriSecond\wjy 1-11\zhangye\pre\CT\std,Spine 1.0.nii,0.4880000054836273,0.4880000054836273,1.0,512,512,306,0.4880000054836273,ok
+zhangye,intra,D:\data_space\ZhongriSecond\wjy 1-11\zhangye\intra\CT\bone,Bone 1.0.nii,0.296999990940094,0.296999990940094,0.800000011920929,512,512,382,0.296999990940094,ok
+zhangye,intra,D:\data_space\ZhongriSecond\wjy 1-11\zhangye\intra\CT\std,Spine 1.0.nii,0.296999990940094,0.296999990940094,1.0,512,512,306,0.296999990940094,ok

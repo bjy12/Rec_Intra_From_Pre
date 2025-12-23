@@ -18,7 +18,7 @@ import numpy as np
 from tqdm import tqdm
 from einops import rearrange
 from einops_exts import check_shape, rearrange_many
-from ddpm.model.condition_model import IntraXray_PreCT_Condition_Model
+from ddpm.model.latent_condition_model import LatentConditionModel
 from timm.models.vision_transformer import Attention
 from timm.layers import to_2tuple
 from torch.utils.data import Dataset, DataLoader
@@ -435,7 +435,7 @@ class EinopsToAndFrom(nn.Module):
 
 
 
-class BiFlowNet_Pre_Intra(nn.Module):
+class BiFlowNet_Rec_Intra_Pre(nn.Module):
     def __init__(
         self,
         dim,
@@ -455,16 +455,24 @@ class BiFlowNet_Pre_Intra(nn.Module):
         vq_size=64,
         res_condition=True,
         num_mid_DiT=1,
-        cfg_xray_encoder=None,
-        cfg_ct_encoder=None,
+        latent_channels=8,
         condition_channels=128,
+        latent_size=32,
     ):
         self.cond_classes = cond_classes
         self.res_condition = res_condition
 
         super().__init__()
         self.channels = channels
-        self.condition_branch = IntraXray_PreCT_Condition_Model(cfg_xray_encoder, cfg_ct_encoder)
+        # 使用新的 LatentConditionModel 处理 latent space 条件
+        self.condition_branch = LatentConditionModel(
+            latent_channels=latent_channels,
+            drr_in_channels=1,
+            base_channels=32,
+            feat_channels=condition_channels,
+            out_channels=condition_channels,
+            latent_size=latent_size,
+        )
 
         input_channels = channels + condition_channels
         self.vq_size = vq_size

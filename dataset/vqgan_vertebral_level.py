@@ -7,7 +7,7 @@ import glob
 import torchio as tio
 import json
 import random
-
+import pdb
 class VQGAN_Vertebral_Dataset(Dataset):
     def __init__(
         self,
@@ -56,7 +56,10 @@ class VQGAN_Vertebral_Dataset(Dataset):
 
     def __getitem__(self, index):
         image_path = self.all_vertebral_level_path[index]
-        level = image_path.split("/")[-2]
+        #pdb.set_trace()
+        case_name = image_path.split("\\")[-3].split("/")[-1]
+        level = image_path.split("\\")[-2].split("/")[-1]
+        type = image_path.split("\\")[-1].split(".")[0]
         whole_img = tio.ScalarImage(image_path)
         img = whole_img  # 保持 ScalarImage 对象以保留 affine 信息
         if self.augmentation:
@@ -73,10 +76,10 @@ class VQGAN_Vertebral_Dataset(Dataset):
         print(f"imageout.min(): {imageout.min()}, imageout.max(): {imageout.max()}")
         imageout = (imageout - clip_min) / (clip_max - clip_min + 1e-6)
         imageout = imageout * 2 - 1
-        imageout = imageout.transpose(1,3).transpose(2,3)
+        #imageout = imageout.transpose(1,3).transpose(2,3)
         imageout = imageout.type(torch.float32)
-
+         
         if self.split =='val':
-            return {'data': imageout, 'affine': img.affine, 'path': image_path}
+            return {'data': imageout, 'affine': img.affine, 'path': image_path , 'level': level , 'names': case_name , 'type': type }
         else:
-            return {'data': imageout, 'level': level}
+            return {'data': imageout, 'level': level , 'path': image_path , 'names': case_name , 'type': type}

@@ -1,0 +1,1 @@
+# Cases/CT with min_spacing > 2.0 or read error

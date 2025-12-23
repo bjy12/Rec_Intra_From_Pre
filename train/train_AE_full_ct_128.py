@@ -58,7 +58,7 @@ def main(cfg_path: str):
     callbacks.append(ModelCheckpoint(every_n_train_steps=10000, save_top_k=-1,
                      filename='{epoch}-{step}-10000-{train/recon_loss:.2f}'))
     callbacks.append(VolumeLogger(
-        batch_frequency=1500, max_volumes=4, clamp=True))
+        batch_frequency=1500, max_volumes=1, clamp=True))
 
     # 根据 GPU 数量选择策略
     num_gpus = cfg.model.gpus if torch.cuda.is_available() else 0
@@ -66,7 +66,6 @@ def main(cfg_path: str):
         strategy = 'auto'  # 单 GPU 或 CPU 使用 auto（不需要 NCCL）
     else:
         strategy = 'ddp_find_unused_parameters_true'  # 多 GPU 使用 ddp（需要 NCCL，仅 Linux）
-    
     # 修复 precision：bf16 -> bf16-mixed
     precision = cfg.model.precision
     if precision == 'bf16':
