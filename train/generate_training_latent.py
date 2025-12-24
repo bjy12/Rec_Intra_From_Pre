@@ -20,7 +20,7 @@ import pdb
 
 def generate():
     root_dir = 'D:/data_space/Zhongrifriendly/paired_data_cropped_176_1/final_dataset/'
-    files_names_path = './files_names/train_cases_vertebral_ds.txt'
+    files_names_path = './files_names/test_cases_vertebral_ds.txt'
     latent_ds_save_root = 'D:/data_space/Zhongrifriendly/paired_data_cropped_176_1/latent_ds/'
     batch_size = 1
     num_workers = 1

@@ -458,9 +458,11 @@ class BiFlowNet_Rec_Intra_Pre(nn.Module):
         latent_channels=8,
         condition_channels=128,
         latent_size=32,
+        use_dit=True,  # 新增: 是否使用 DiT 流 (用于消融实验)
     ):
         self.cond_classes = cond_classes
         self.res_condition = res_condition
+        self.use_dit = use_dit  # 保存 DiT 开关
 
         super().__init__()
         self.channels = channels
@@ -494,6 +496,7 @@ class BiFlowNet_Rec_Intra_Pre(nn.Module):
 
         # time embedding uses 8 * dim so it matches adaLN_modulation (which expects 8*dim input)
         time_dim = dim * 8
+        self.time_dim = time_dim  # 保存用于 forward
         self.time_mlp = nn.Sequential(
             SinusoidalPosEmb(dim),
             nn.Linear(dim, time_dim),
@@ -501,6 +504,10 @@ class BiFlowNet_Rec_Intra_Pre(nn.Module):
             nn.Linear(time_dim, time_dim)
         )
 
+        # 脊柱级别 embedding (L1-L5 = 0-4)
+        self.num_levels = 5
+        self.level_embedding = nn.Embedding(self.num_levels, time_dim)
+        
         # text / resolution conditioning (kept same dim; no doubling)
         if self.cond_classes is not None:
             self.cond_emb = nn.Embedding(cond_classes, time_dim)
@@ -693,61 +700,66 @@ class BiFlowNet_Rec_Intra_Pre(nn.Module):
         
         b = x_input.shape[0]
         ori_shape = (x_input.shape[2]*8,x_input.shape[3]*8,x_input.shape[4]*8) 
-        # time_rel_pos_bias = self.time_rel_pos_bias(x.shape[2], device=x.device)
-        x_IntraPatch = x_input.clone()
-        # x_IntraPatch.retain_grad() 
-        p = self.sub_volume_size[0]
-        x_IntraPatch = x_IntraPatch.unfold(2,p,p).unfold(3,p,p).unfold(4,p,p)
-        p1 , p2 , p3 = x_IntraPatch.size(2) , x_IntraPatch.size(3) , x_IntraPatch.size(4)
-        x_IntraPatch = rearrange(x_IntraPatch , 'b c p1 p2 p3 d h w -> (b p1 p2 p3) c d h w')
+        
         #pdb.set_trace()
         x = self.init_conv(x_input)
         r = x.clone()
         #pdb.set_trace()
 
         t = self.time_mlp(time) if exists(self.time_mlp) else None
-        c = t.shape[-1]
-        t_DiT = t.unsqueeze(1).repeat(1,p1*p2*p3,1).view(-1,c)
-        # if self.cond_classes:
-        #     assert y.shape == (x.shape[0],)
-        #     cond_emb = self.cond_emb(y)
-        #     cond_emb_DiT = cond_emb.unsqueeze(1).repeat(1,p1*p2*p3,1).view(-1,c)
-        #     t = t + cond_emb
-        #     t_DiT = t_DiT + cond_emb_DiT
-        # if self.res_condition:
-        #     if len(res.shape) == 1:
-        #         res = res.unsqueeze(0)
-        #     res_condition_emb = self.res_mlp(res)
-        #     t = torch.cat((t,res_condition_emb),dim=1)
-        #     res_condition_emb_DiT = res_condition_emb.unsqueeze(1).repeat(1,p1*p2*p3,1).view(-1,c)
-        #     t_DiT = torch.cat((t_DiT,res_condition_emb_DiT),dim=1)
-        #pdb.set_trace()
-        x_IntraPatch = self.x_embedder(x_IntraPatch)
-        x_IntraPatch = x_IntraPatch + self.pos_embed
-        h_DiT , h_Unet,h,=[],[],[]
-        for Block, MlpLayer in self.IntraPatchFlow_input:
-            x_IntraPatch = Block(x_IntraPatch,t_DiT)
-            h_DiT.append(x_IntraPatch)
-            Unet_feature = self.unpatchify_voxels(MlpLayer(x_IntraPatch,t_DiT))
-            Unet_feature = rearrange(Unet_feature, '(b p) c d h w -> b p c d h w', b=b) 
-            Unet_feature = rearrange(Unet_feature, 'b (p1 p2 p3) c d h w -> b c (p1 d) (p2 h) (p3 w)',
-                        p1=ori_shape[0]//self.vq_size, p2=ori_shape[1]//self.vq_size, p3=ori_shape[2]//self.vq_size)
-            h_Unet.append(Unet_feature)
+        
+        # 添加 level 条件到时间嵌入
+        level_idx = condition_dict.get('level_idx', None)
+        if level_idx is not None:
+            level_emb = self.level_embedding(level_idx)  # [B, time_dim]
+            t = t + level_emb  # 加法融合
+        
+        h_Unet = []  # DiT 特征注入列表
+        h = []       # U-Net 跳跃连接列表
+        
+        # ============ DiT 流 (可选) ============
+        if self.use_dit:
+            # time_rel_pos_bias = self.time_rel_pos_bias(x.shape[2], device=x.device)
+            x_IntraPatch = x_input.clone()
+            # x_IntraPatch.retain_grad() 
+            p = self.sub_volume_size[0]
+            x_IntraPatch = x_IntraPatch.unfold(2,p,p).unfold(3,p,p).unfold(4,p,p)
+            p1 , p2 , p3 = x_IntraPatch.size(2) , x_IntraPatch.size(3) , x_IntraPatch.size(4)
+            x_IntraPatch = rearrange(x_IntraPatch , 'b c p1 p2 p3 d h w -> (b p1 p2 p3) c d h w')
+            
+            c = t.shape[-1]
+            t_DiT = t.unsqueeze(1).repeat(1,p1*p2*p3,1).view(-1,c)
+            
+            x_IntraPatch = self.x_embedder(x_IntraPatch)
+            x_IntraPatch = x_IntraPatch + self.pos_embed
+            h_DiT = []
+            
+            for Block, MlpLayer in self.IntraPatchFlow_input:
+                x_IntraPatch = Block(x_IntraPatch,t_DiT)
+                h_DiT.append(x_IntraPatch)
+                Unet_feature = self.unpatchify_voxels(MlpLayer(x_IntraPatch,t_DiT))
+                Unet_feature = rearrange(Unet_feature, '(b p) c d h w -> b p c d h w', b=b) 
+                Unet_feature = rearrange(Unet_feature, 'b (p1 p2 p3) c d h w -> b c (p1 d) (p2 h) (p3 w)',
+                            p1=ori_shape[0]//self.vq_size, p2=ori_shape[1]//self.vq_size, p3=ori_shape[2]//self.vq_size)
+                h_Unet.append(Unet_feature)
 
-        for Block in self.IntraPatchFlow_mid:
-            x_IntraPatch = Block(x_IntraPatch,t_DiT)
+            for Block in self.IntraPatchFlow_mid:
+                x_IntraPatch = Block(x_IntraPatch,t_DiT)
 
-        for Block, MlpLayer in self.IntraPatchFlow_output:
-            x_IntraPatch = Block(x_IntraPatch,t_DiT , h_DiT.pop())
-            Unet_feature = self.unpatchify_voxels(MlpLayer(x_IntraPatch,t_DiT))
-            Unet_feature = rearrange(Unet_feature, '(b p) c d h w -> b p c d h w', b=b) 
-            Unet_feature = rearrange(Unet_feature, 'b (p1 p2 p3) c d h w -> b c (p1 d) (p2 h) (p3 w)',
-                        p1=ori_shape[0]//self.vq_size, p2=ori_shape[1]//self.vq_size, p3=ori_shape[2]//self.vq_size)
-            h_Unet.append(Unet_feature)
+            for Block, MlpLayer in self.IntraPatchFlow_output:
+                x_IntraPatch = Block(x_IntraPatch,t_DiT , h_DiT.pop())
+                Unet_feature = self.unpatchify_voxels(MlpLayer(x_IntraPatch,t_DiT))
+                Unet_feature = rearrange(Unet_feature, '(b p) c d h w -> b p c d h w', b=b) 
+                Unet_feature = rearrange(Unet_feature, 'b (p1 p2 p3) c d h w -> b c (p1 d) (p2 h) (p3 w)',
+                            p1=ori_shape[0]//self.vq_size, p2=ori_shape[1]//self.vq_size, p3=ori_shape[2]//self.vq_size)
+                h_Unet.append(Unet_feature)
+        # ============ DiT 流结束 ============
         
 
+        # ============ U-Net 流 ============
         for idx, (block1, spatial_attn1, block2, spatial_attn2,downsample) in enumerate(self.downs):
-            if idx <self.feature_fusion :
+            # 只有当 use_dit=True 时才注入 DiT 特征
+            if self.use_dit and idx < self.feature_fusion and len(h_Unet) > 0:
                 x = x + h_Unet.pop(0)
             x = block1(x, t)
             x = spatial_attn1(x)
@@ -762,7 +774,8 @@ class BiFlowNet_Rec_Intra_Pre(nn.Module):
         x = self.mid_block2(x, t)
 
         for idx, (block1, spatial_attn1,block2, spatial_attn2,  upsample) in enumerate(self.ups):
-            if len(self.ups)-idx <= 2:
+            # 只有当 use_dit=True 时才注入 DiT 特征
+            if self.use_dit and len(self.ups)-idx <= 2 and len(h_Unet) > 0:
                 x = x + h_Unet.pop(0)
             x = torch.cat((x, h.pop()), dim=1)
             x = block1(x, t)

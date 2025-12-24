@@ -1,0 +1,46 @@
+# =============================================================================
+# BiFlowNet_Rec_Intra_Pre 调试配置文件
+# 用于验证代码流程是否正确
+# =============================================================================
+
+model:
+  # ==================== 数据路径 ====================
+  latent_root_dir: "D:/data_space/Zhongrifriendly/paired_data_cropped_176_1/latent_ds"
+  train_files_names_path: "./files_names/train_cases_vertebral_ds.txt"
+  val_files_names_path: "./files_names/test_cases_vertebral_ds.txt"
+  drr_roi_root: "D:/data_space/Zhongrifriendly/paired_data_cropped_176_1/label_drr_roi_600"
+  
+  # ==================== 模型路径 ====================
+  AE_ckpt: "D:/code_space_bone/3D-MedDiffusion-main/my_model/latest_checkpoint-v2.ckpt"
+  ckpt: null
+  results_dir: "../results_intra_pre/debug_run"
+  model: "BiFlowNet_Rec_Intra_Pre"
+  
+  # ==================== 模型架构 ====================
+  model_dim: 72
+  dim_mults: [1, 1, 2, 4, 8]
+  volume_channels: 8
+  condition_channels: 128
+  resolution: [32, 32, 32]
+  vq_size: 64
+  patch_size: 2
+  num_dit: 1
+  use_attn: [0, 0, 0, 1, 1]
+  use_dit: true
+  
+  # ==================== 扩散参数 ====================
+  timesteps: 1000
+  loss_type: "l1"
+  
+  # ==================== 调试参数 ====================
+  epochs: 1000                   # 只跑 1 个 epoch
+  batch_size: 3               # batch size = 1
+  num_workers: 0              # Windows 下用 0 避免多进程问题
+  global_seed: 42
+  enable_amp: false           # 禁用混合精度，便于调试
+  
+  # ==================== 频繁检查点 ====================
+  log_every: 10                # 每步打印日志
+  ckpt_every: 500              # 每 500 步保存 + 采样
+  val_every_steps: 500        # 暂时禁用验证
+  val_gen_batches: 1

@@ -1,0 +1,46 @@
+# =============================================================================
+# BiFlowNet_Rec_Intra_Pre 训练配置文件
+# 用于: train_Diff_Intra_Pre.py
+# =============================================================================
+
+model:
+  # ==================== 数据路径 ====================
+  latent_root_dir: "D:/data_space/Zhongrifriendly/paired_data_cropped_176_1/latent_ds"       # latent 数据根目录
+  train_files_names_path: "./files_names/train_cases_vertebral_ds.txt"  # 训练文件列表
+  val_files_names_path: "./files_names/train_cases_vertebral_ds.txt"      # 验证文件列表 (可选)
+  drr_roi_root: "D:/data_space/Zhongrifriendly/paired_data_cropped_176_1/label_drr_roi_600"              # DRR ROI 数据目录
+  
+  # ==================== 模型路径 ====================
+  AE_ckpt: "D:/code_space_bone/3D-MedDiffusion-main/my_model/latest_checkpoint-v2.ckpt"          # AutoEncoder checkpoint
+  ckpt: null                                       # 继续训练的 checkpoint (null = 从头训练)
+  results_dir: "../results_intra_pre/intra_pre"                 # 结果保存目录
+  model: "BiFlowNet_Rec_Intra_Pre"                # 模型名称
+  
+  # ==================== 模型架构 ====================
+  model_dim: 72                                    # 基础通道数
+  dim_mults: [1, 1, 2, 4, 8]                      # U-Net 通道倍数
+  volume_channels: 8                               # latent 通道数
+  condition_channels: 128                          # 条件特征通道数
+  resolution: [32, 32, 32]                        # latent 空间分辨率
+  vq_size: 64                                      # VQ 尺寸
+  patch_size: 2                                    # DiT patch 尺寸
+  num_dit: 1                                       # mid DiT blocks 数量
+  use_attn: [0, 0, 0, 1, 1]                       # 各层是否使用注意力
+  use_dit: false                                    # 是否使用 DiT 流 (false = 纯 U-Net)
+  
+  # ==================== 扩散参数 ====================
+  timesteps: 1000                                  # 扩散步数
+  loss_type: "l1"                                  # 损失类型: l1 或 l2
+  
+  # ==================== 训练参数 ====================
+  epochs: 1000                                     # 训练轮数
+  batch_size: 2                                    # batch 大小 (根据显存调整)
+  num_workers: 0                                  # 数据加载线程数
+  global_seed: 42                                  # 随机种子
+  enable_amp: false                                 # 启用混合精度训练
+  
+  # ==================== 日志和保存 ====================
+  log_every: 50                                    # 每 N 步打印日志
+  ckpt_every: 500                                  # 每 N 步保存 checkpoint
+  val_every_steps: 1                            # 每 N 步验证 (null = 每 epoch 验证)
+  val_gen_batches: 1                               # 验证时生成的 batch 数

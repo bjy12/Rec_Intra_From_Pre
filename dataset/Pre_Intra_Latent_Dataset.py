@@ -210,7 +210,7 @@ class Pre_Intra_Latent_Dataset(Dataset):
         return resized_rois, angles
     
     def __len__(self) -> int:
-        return len(self.all_vertebral_level_path)
+        return len(self.all_vertebral_level_path_pre)
     def normalize_ct(self, ct: torch.Tensor) -> torch.Tensor:
         clip_min, clip_max = float(self.window_min), float(self.window_max)
         ct = torch.clamp(ct, min=clip_min, max=clip_max)
@@ -227,7 +227,7 @@ class Pre_Intra_Latent_Dataset(Dataset):
         intra_latent = tio.ScalarImage(intra_path).data.to(torch.float32)
         #
         # lt_{file_name}_{level}_intra_aligned.nii.gz
-        pdb.set_trace()
+        # pdb.set_trace()
         name_ = pre_path.split("\\")[-1]
         case_name = name_.split('_')[1]
         level = name_.split('_')[2]
@@ -241,6 +241,7 @@ class Pre_Intra_Latent_Dataset(Dataset):
             'angles': angles,
             'name': case_name,
             'level': level,
+            'level_idx': self.all_vertebral_level.index(level)
         }   
 
 

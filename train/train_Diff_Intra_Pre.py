@@ -21,8 +21,8 @@ from time import time
 import argparse
 import logging
 import yaml
-from ddpm.BiFlowNet_Rec import GaussianDiffusion
-from ddpm.BiFlowNet_Rec import BiFlowNet_Pre_Intra 
+from ddpm.BiFlowNet_Rec_Intra_Pre import GaussianDiffusion
+from ddpm.BiFlowNet_Rec_Intra_Pre import BiFlowNet_Rec_Intra_Pre
 from AutoEncoder.model.PatchVolume import patchvolumeAE
 import torchio as tio
 import copy
@@ -119,25 +119,23 @@ Returns updated best_val_loss and the mean generation MAE.
 
     with torch.no_grad():
         for ds_val in val_loader:
-            pre_ct = ds_val['pre_ct']
-            intra_ct = ds_val['intra_ct']
-            projs = ds_val['projs']
-            angles = ds_val['angles']
-            projs_points = ds_val['proj_points']
+            # 适配新的 Dataset 输出格式
             pre_latent = ds_val['pre_latent']
             intra_latent = ds_val['intra_latent']
+            drr_images = ds_val['drr_images']
+            level_idx = ds_val['level_idx']
 
-            b = pre_ct.shape[0]
+            b = pre_latent.shape[0]
 
             z = intra_latent.to(device)
-            projs = projs.to(device)
-            projs_points = projs_points.to(device)
+            drr_images = drr_images.to(device)
             pre_latent = pre_latent.to(device)
+            level_idx = level_idx.to(device)
 
             condition_dict_val = {
-                'projs': projs,
-                'projs_points': projs_points,
-                'pre_ct_latent': pre_latent
+                'pre_latent': pre_latent,
+                'drr_images': drr_images,
+                'level_idx': level_idx,
             }
 
             # ---- Full conditional generation check (lightweight; limited batches) ----
@@ -152,8 +150,8 @@ Returns updated best_val_loss and the mean generation MAE.
                               (AE.codebook.embeddings.max() - AE.codebook.embeddings.min())) + AE.codebook.embeddings.min()
                 pred_ct = AE.decode(gen_latent, quantize=True)
 
-                target_ct = intra_ct.to(device)
-                mae_val = torch.mean(torch.abs(pred_ct - target_ct))
+                target_latent = intra_latent.to(device)
+                mae_val = torch.mean(torch.abs(gen_latent - target_latent))
                 gen_mae_list.append(mae_val.item())
 
                 if save_dir:
@@ -232,8 +230,9 @@ def main(cfg):
     logger.info(f"Using device: {device}")
 
     # pdb.set_trace()
-    # Create model:
-    model = BiFlowNet_Pre_Intra(
+    # Create model: 使用新的 BiFlowNet_Rec_Intra_Pre
+    use_dit = getattr(cfg.model, 'use_dit', True)  # 默认启用 DiT
+    model = BiFlowNet_Rec_Intra_Pre(
             dim=cfg.model.model_dim,
             dim_mults=cfg.model.dim_mults,
             channels=cfg.model.volume_channels,
@@ -243,12 +242,13 @@ def main(cfg):
             learn_sigma=False,
             use_sparse_linear_attn=cfg.model.use_attn,
             vq_size=cfg.model.vq_size,
-            num_mid_DiT = cfg.model.num_dit,
-            patch_size = cfg.model.patch_size,
-            # [修改] 传入上面定义的配置对象
-            cfg_xray_encoder=cfg.cfg_xray_encoder,
-            cfg_ct_encoder=cfg.cfg_ct_encoder,
-            condition_channels=cfg.model.condition_channels
+            num_mid_DiT=cfg.model.num_dit,
+            patch_size=cfg.model.patch_size,
+            # 新的参数用于 LatentConditionModel
+            latent_channels=cfg.model.volume_channels,  # 8
+            latent_size=cfg.model.resolution[0],         # 32
+            condition_channels=cfg.model.condition_channels,
+            use_dit=use_dit,  # DiT 开关
         ).to(device)
     
     diffusion = GaussianDiffusion(
@@ -258,10 +258,10 @@ def main(cfg):
     ).to(device)
     logger.info(f"*****************Diffusion Model loaded  Successfully*****************")
     #pdb.set_trace()
-    ema = EMA(0.995)
+    ema = EMA(0.99)  # 降低 β: 0.995 → 0.99, 更快跟踪模型
     ema_model = copy.deepcopy(model)
     update_ema_every = 10
-    step_start_ema = 2000
+    step_start_ema = 5000  # 推迟开始: 2000 → 5000, 等模型稳定后再开始 EMA
     
     amp = cfg.model.enable_amp
     scaler = GradScaler(enabled=amp)
@@ -354,33 +354,26 @@ def main(cfg):
                          position=1, leave=False, ncols=120)
         #pdb.set_trace()
         for batch_idx, ds in batch_pbar:
-            # 数据解包
-            pre_ct = ds['pre_ct'] # B C H W D 
-            intra_ct = ds['intra_ct'] # B C H W D 
-            # name = ds['name'] # 暂时用不到 name
-            projs = ds['projs'] # B N_views C H W
-            # angles = ds['angles']
-            pre_latent = ds['pre_latent'] # B l_c l_h l_w l_d 
-            intra_latent = ds['intra_latent'] 
-            projs_points = ds['proj_points'] # B N_views 3
+            # 数据解包 - 适配新的 Dataset 输出格式
+            pre_latent = ds['pre_latent']      # [B, C, D, H, W]
+            intra_latent = ds['intra_latent']  # [B, C, D, H, W]
+            drr_images = ds['drr_images']      # [B, 2, 1, 128, 128]
+            level_idx = ds['level_idx']        # [B]
+            name = ds.get('name', 'sample')
 
-            #pdb.set_trace()
-            b = pre_ct.shape[0]
+            b = pre_latent.shape[0]
             
             # 移动到 GPU
-            z = intra_latent.to(device) # GT (Target) # 
-            projs = projs.to(device)
-            # angles 通常对应 proj_points (几何参数)
-            #angles = angles.to(device) 
-            # pre_ct = pre_ct.to(device) # 如果不需要原始 CT 像素，可以不移
+            z = intra_latent.to(device)  # GT (Target)
+            drr_images = drr_images.to(device)
             pre_latent = pre_latent.to(device)
-            projs_points = projs_points.to(device)
-            # 构建 Condition Dict
-            #pdb.set_trace()
+            level_idx = level_idx.to(device)
+            
+            # 构建 Condition Dict - 适配新的 LatentConditionModel
             condition_dict = {
-                'projs': projs,
-                'projs_points': projs_points, 
-                'pre_ct_latent': pre_latent  
+                'pre_latent': pre_latent,
+                'drr_images': drr_images,
+                'level_idx': level_idx,
             }
             #pdb.set_trace()
             with autocast(enabled=amp):
@@ -463,17 +456,14 @@ def main(cfg):
                                          device=device)
                     
                     # 构造单样本 condition (取 batch 的第一个)
-                    #pdb.set_trace()
                     sample_cond_dict = {
-                        'projs': projs[0:1],
-                        'projs_points': projs_points[0:1],
-                        'pre_ct_latent': pre_latent[0:1]
+                        'pre_latent': pre_latent[0:1],
+                        'drr_images': drr_images[0:1],
+                        'level_idx': level_idx[0:1],
                     }
-                    name = ds['name']
                     # 这里的 p_sample_loop 需要支持传入 condition_dict
-                    # 请确保 GaussianDiffusion.p_sample_loop 已经修改支持 **kwargs 或显式参数
                     samples = diffusion.p_sample_loop(
-                        ema_model, z_sample, condition_dict=sample_cond_dict # 假设你修改后的接口用 hint 接收字典
+                        ema_model, z_sample, condition_dict=sample_cond_dict
                     )
                     # pdb.set_trace()
                     # 解码保存... (保持不变)
@@ -600,6 +590,12 @@ if __name__ == "__main__":
     # [新增] condition channels 参数
     parser.add_argument("--condition-channels", type=int, default=128,
                         help="Number of channels for condition feature")
+    
+    # [新增] DiT 开关
+    parser.add_argument("--use-dit", action='store_true', default=True,
+                        help="Use DiT flow (set to --no-use-dit for U-Net only)")
+    parser.add_argument("--no-use-dit", dest='use_dit', action='store_false',
+                        help="Disable DiT flow (use pure U-Net)")
     #pdb.set_trace()
     args = parser.parse_args()
     if args.config is not None:

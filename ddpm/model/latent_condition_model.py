@@ -290,6 +290,7 @@ class LatentConditionModel(nn.Module):
     输入:
         - pre_latent: [B, C, D, H, W] 术前 CT latent (如 [B, 8, 32, 32, 32])
         - drr_images: [B, 2, 1, 128, 128] 术中 DRR 图像
+        - level: [B] 脊柱级别 (0-4 对应 L1-L5)
     
     输出:
         - condition_feature: [B, out_ch, D, H, W] 融合的条件特征
@@ -304,12 +305,16 @@ class LatentConditionModel(nn.Module):
         feat_channels: int = 128,        # 中间特征通道数
         out_channels: int = 128,         # 输出条件特征通道数
         latent_size: int = 32,           # latent 空间尺寸
+        num_levels: int = 5,             # 脊柱级别数量 (L1-L5)
+        level_embed_dim: int = 64,       # level embedding 维度
     ):
         super().__init__()
         
         self.latent_channels = latent_channels
         self.out_channels = out_channels
         self.latent_size = latent_size
+        self.num_levels = num_levels
+        self.level_embed_dim = level_embed_dim
         
         # CT Latent Encoder
         self.ct_encoder = LatentCTEncoder(
@@ -332,11 +337,30 @@ class LatentConditionModel(nn.Module):
             volume_size=latent_size,
         )
         
-        # Fusion
+        # Fusion (包含 level embedding)
+        # 融合时额外加入 level embedding 通道
         self.fusion = LatentFusion(
             ct_ch=feat_channels,
             drr_ch=feat_channels,
             out_ch=out_channels,
+        )
+        
+        # Level Embedding: 脊柱级别嵌入
+        self.level_embedding = nn.Embedding(num_levels, level_embed_dim)
+        
+        # 将 level embedding 投影并与融合特征结合
+        self.level_proj = nn.Sequential(
+            nn.Linear(level_embed_dim, out_channels),
+            nn.GELU(),
+            nn.Linear(out_channels, out_channels),
+        )
+        
+        self.all_vertebral_level = ["L1", "L2", "L3", "L4", "L5"]
+
+        # 最终融合层（结合 level 信息）
+        self.final_fusion = nn.Sequential(
+            ResBlock3D(out_channels, out_channels),
+            ResBlock3D(out_channels, out_channels),
         )
     
     def forward(self, condition_dict: Dict[str, torch.Tensor]) -> torch.Tensor:
@@ -345,6 +369,7 @@ class LatentConditionModel(nn.Module):
             condition_dict: {
                 'pre_latent': [B, C, D, H, W],  # 术前 CT latent
                 'drr_images': [B, 2, 1, H, W],  # DRR 图像
+                'level': [B],                   # 脊柱级别 (0-4)
             }
         
         Returns:
@@ -352,7 +377,8 @@ class LatentConditionModel(nn.Module):
         """
         pre_latent = condition_dict['pre_latent']  # [B, C, D, H, W]
         drr_images = condition_dict['drr_images']  # [B, 2, 1, 128, 128]
-        
+        level = condition_dict.get('level_idx', None)  # [B] 脊柱级别索引 (0-4)
+
         # 编码 CT latent
         ct_feat = self.ct_encoder(pre_latent)  # [B, feat_ch, D, H, W]
         
@@ -362,8 +388,26 @@ class LatentConditionModel(nn.Module):
         # 2D → 3D 提升
         drr_3d = self.lift(drr_feat)  # [B, feat_ch, 32, 32, 32]
         
-        # 融合
+        # 融合 CT 和 DRR 特征
         condition_feature = self.fusion(ct_feat, drr_3d)  # [B, out_ch, D, H, W]
+        
+        # 添加 Level 条件
+        if level is not None:
+            B = condition_feature.shape[0]
+            device = condition_feature.device
+            
+            
+            level_emb = self.level_embedding(level)  # [B, level_embed_dim]
+            level_proj = self.level_proj(level_emb)  # [B, out_channels]
+            
+            # 空间广播: [B, C] -> [B, C, D, H, W]
+            level_spatial = level_proj.view(B, -1, 1, 1, 1).expand_as(condition_feature)
+            
+            # 特征调制 (加法融合)
+            condition_feature = condition_feature + level_spatial
+        
+        # 最终融合
+        condition_feature = self.final_fusion(condition_feature)
         
         return condition_feature
 
@@ -383,15 +427,18 @@ if __name__ == "__main__":
         feat_channels=128,
         out_channels=128,
         latent_size=32,
+        num_levels=5,  # L1-L5
+        level_embed_dim=64,
     )
     
     print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
     
-    # 测试输入
+    # 测试输入 (包含 level)
     B = 2
     condition_dict = {
         'pre_latent': torch.randn(B, 8, 32, 32, 32),
         'drr_images': torch.randn(B, 2, 1, 128, 128),
+        'level': ["L1", "L4"],  # L1 和 L4
     }
     
     # 前向传播
@@ -400,7 +447,17 @@ if __name__ == "__main__":
     
     print(f"Input pre_latent shape: {condition_dict['pre_latent'].shape}")
     print(f"Input drr_images shape: {condition_dict['drr_images'].shape}")
+    print(f"Input level: {condition_dict['level']} (L1, L4)")
     print(f"Output condition_feature shape: {output.shape}")
+    
+    # 测试不带 level 的情况
+    condition_dict_no_level = {
+        'pre_latent': torch.randn(B, 8, 32, 32, 32),
+        'drr_images': torch.randn(B, 2, 1, 128, 128),
+    }
+    with torch.no_grad():
+        output_no_level = model(condition_dict_no_level)
+    print(f"Output without level shape: {output_no_level.shape}")
     
     # GPU 测试
     if torch.cuda.is_available():
@@ -412,3 +469,4 @@ if __name__ == "__main__":
         
         print(f"\nGPU test passed!")
         print(f"GPU memory allocated: {torch.cuda.memory_allocated() / 1024**3:.2f} GB")
+
